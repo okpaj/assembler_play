@@ -27,12 +27,14 @@
 #define GPIOA_OTYPER	((uint32_t *)(0x40020004))
 #define GPIOA_BSSR		((uint32_t *)(0x40020018))
 
+void delay(uint32_t d);
 
 int main(void)
 {
     /* Loop forever */
 	uint32_t volatile *reg;
 	uint32_t val, one = 1;
+	uint32_t volatile rr;
 
 	reg = RCC_AHB1ENR;
 	val = (uint32_t) 1;
@@ -51,13 +53,27 @@ int main(void)
 	val = one << 16;
 	*reg = val;
 
+
+
 	while (1) {
+
+
 		reg = GPIOA_BSSR;
 		val = one;
 		*reg = val;
 
+		delay(1000000);
+
 		reg = GPIOA_BSSR;
 		val = one << 16;
 		*reg = val;
+
+		delay(1000000);
+	}
+}
+
+void delay(uint32_t d) {
+	for (; d > 0; --d) {
+		;
 	}
 }
