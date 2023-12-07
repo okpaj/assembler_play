@@ -19,61 +19,95 @@
 #include <stdint.h>
 //#include "stm32f401xe.h"
 
-#define RCC_BASE		((uint32_t *)(0x40023800))
-#define RCC_AHB1ENR		((uint32_t *)(0x40023830))
+#define RCC_BASE    ((volatile void *)(0x40023800))
+#define GPIOA_BASE  ((volatile void *)(0x40020000))
+#define NVIC_BASE   ((volatile void *)(0xE000E100))
+#define STIR_BASE   ((volatile void *)(0xE000EF00))
 
-#define GPIOA_BASE		((uint32_t *)(0x40020000))
-#define GPIOA_MODER		((uint32_t *)(0x40020000))
-#define GPIOA_OTYPER	((uint32_t *)(0x40020004))
-#define GPIOA_BSSR		((uint32_t *)(0x40020018))
+struct {
+	uint32_t ISER[8];
+	uint32_t notused1[24];
+	uint32_t ICER[8];
+	uint32_t notused2[24];
+	uint32_t ISPR[8];
+	uint32_t notused3[24];
+	uint32_t ICPR[8];
+	uint32_t notused4[24];
+	uint32_t IABR[8];
 
+} volatile * NVIC = NVIC_BASE;
+
+struct {
+	uint32_t STIR;
+} volatile * STIR = STIR_BASE;
+
+struct RCC_t {
+	uint32_t r[12];
+	uint32_t AHB1ENR;
+
+} volatile * RCC = RCC_BASE;
+
+struct GPIO_t {
+	uint32_t MODER;
+	uint32_t OTYPER;
+	uint32_t OSPEEDR;
+	uint32_t PUPDR;
+	uint16_t IDR;
+	uint16_t ODR;
+	uint32_t BSSR;
+} volatile * GPIOA = GPIOA_BASE;
+
+void EXTI1_IRQHandler(void);
 void delay(uint32_t d);
+extern void EnableInterrupts(void);
+extern void DisableInterrupts(void);
+
+#define my_irq_no 7
 
 int main(void)
 {
     /* Loop forever */
 	uint32_t volatile *reg;
 	uint32_t val, one = 1;
-	uint32_t volatile rr;
 
-	reg = RCC_AHB1ENR;
-	val = (uint32_t) 1;
-	*reg = val;
+	NVIC->ISER[0] = 1 << 31;
 
-	reg = GPIOA_MODER;
-	val = *reg;
+	NVIC->ICER[0] = 1 << 31;
+
+	NVIC->ISER[0] = 1 << my_irq_no;
+
+	EnableInterrupts();
+	//DisableInterrupts();
+
+	RCC->AHB1ENR = (uint32_t) 1;
+
+	val = GPIOA->MODER;
 	val = val | (uint32_t)1;
-	*reg = val;
+	GPIOA->MODER = val;
 
-	reg = GPIOA_BSSR;
-	val = one;
-	*reg = val;
-
-	reg = GPIOA_BSSR;
-	val = one << 16;
-	*reg = val;
-
-
+	//NVIC->ISPR[0] = 1 << my_irq_no;
 
 	while (1) {
 
-
-		reg = GPIOA_BSSR;
-		val = one;
-		*reg = val;
-
+		//GPIOA->BSSR = one;
+		NVIC->ISPR[0] = 1 << my_irq_no;
+		delay(100000);
+		GPIOA->BSSR = one << 16;
 		delay(1000000);
 
-		reg = GPIOA_BSSR;
-		val = one << 16;
-		*reg = val;
-
-		delay(1000000);
 	}
 }
+
+void EXTI1_IRQHandler(void) {
+	GPIOA->BSSR = 1;
+	delay(100000);
+	return;
+}
+
 
 void delay(uint32_t d) {
 	for (; d > 0; --d) {
 		;
 	}
+	return;
 }
